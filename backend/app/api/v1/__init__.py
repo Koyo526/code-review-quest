@@ -3,7 +3,7 @@ API v1 router
 """
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import session, submit, profile
+from app.api.v1.endpoints import session, submit, profile, explanation
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router = APIRouter()
 api_router.include_router(session.router, prefix="/session", tags=["session"])
 api_router.include_router(submit.router, prefix="/submit", tags=["submit"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
+api_router.include_router(explanation.router, prefix="/explanation", tags=["explanation"])

@@ -4,6 +4,8 @@ import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
 import ResultPage from './pages/ResultPage'
 import ProfilePage from './pages/ProfilePage'
+import ExplanationPage from './pages/ExplanationPage'
+import ProblemsPage from './pages/ProblemsPage'
 
 function App() {
   return (
@@ -18,6 +20,7 @@ function App() {
             </div>
             <nav className="flex space-x-4">
               <a href="/" className="text-gray-600 hover:text-gray-900">Home</a>
+              <a href="/problems" className="text-gray-600 hover:text-gray-900">Problems</a>
               <a href="/profile" className="text-gray-600 hover:text-gray-900">Profile</a>
             </nav>
           </div>
@@ -30,6 +33,8 @@ function App() {
           <Route path="/game" element={<GamePage />} />
           <Route path="/result" element={<ResultPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/problems" element={<ProblemsPage />} />
+          <Route path="/explanation/:problemId" element={<ExplanationPage />} />
         </Routes>
       </main>
     </div>
