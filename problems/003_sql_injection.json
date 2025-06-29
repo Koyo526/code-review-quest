@@ -1,0 +1,33 @@
+{
+  "id": "003_sql_injection",
+  "title": "SQL Injection Vulnerability",
+  "difficulty": "intermediate",
+  "category": "security",
+  "description": "Find the SQL injection vulnerability in this database query function",
+  "code": "import sqlite3\n\ndef get_user_by_name(db_connection, username):\n    \"\"\"Get user information by username\"\"\"\n    cursor = db_connection.cursor()\n    \n    # Bug: SQL injection vulnerability\n    query = f\"SELECT * FROM users WHERE username = '{username}'\"\n    cursor.execute(query)\n    \n    result = cursor.fetchone()\n    return result\n\n# Example usage\n# conn = sqlite3.connect('users.db')\n# user = get_user_by_name(conn, \"john_doe\")",
+  "bugs": [
+    {
+      "line_number": 7,
+      "type": "security",
+      "severity": "critical",
+      "description": "SQL injection vulnerability in query construction",
+      "explanation": "Using f-string to construct SQL queries allows malicious input to modify the query structure. An attacker could input: ' OR '1'='1' -- to bypass authentication.",
+      "fix_suggestion": "Use parameterized queries: cursor.execute(\"SELECT * FROM users WHERE username = ?\", (username,))"
+    }
+  ],
+  "test_cases": [
+    {
+      "input": "\"john_doe\"",
+      "expected_output": "User data for john_doe"
+    },
+    {
+      "input": \"' OR '1'='1' --\",
+      "expected_vulnerability": "Returns all users due to SQL injection"
+    }
+  ],
+  "learning_objectives": [
+    "Understanding SQL injection attacks",
+    "Importance of parameterized queries",
+    "Database security best practices"
+  ]
+}

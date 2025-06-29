@@ -1,0 +1,30 @@
+{
+  "id": "005_race_condition",
+  "title": "Race Condition",
+  "difficulty": "advanced",
+  "category": "concurrency",
+  "description": "Find the race condition in this multi-threaded counter",
+  "code": "import threading\nimport time\n\nclass Counter:\n    def __init__(self):\n        self.value = 0\n    \n    def increment(self):\n        # Bug: Race condition - not thread-safe\n        current = self.value\n        time.sleep(0.001)  # Simulate some processing\n        self.value = current + 1\n\ndef worker(counter, iterations):\n    for _ in range(iterations):\n        counter.increment()\n\n# Create counter and threads\ncounter = Counter()\nthreads = []\nfor i in range(5):\n    t = threading.Thread(target=worker, args=(counter, 100))\n    threads.append(t)\n    t.start()\n\nfor t in threads:\n    t.join()\n\nprint(f\"Final count: {counter.value}\")  # Expected: 500, Actual: varies",
+  "bugs": [
+    {
+      "line_number": 9,
+      "type": "concurrency",
+      "severity": "high",
+      "description": "Race condition in increment operation",
+      "explanation": "Multiple threads can read the same value simultaneously, leading to lost updates. The read-modify-write operation is not atomic.",
+      "fix_suggestion": "Use threading.Lock() to synchronize access: with self.lock: self.value += 1"
+    }
+  ],
+  "test_cases": [
+    {
+      "input": "5 threads, 100 increments each",
+      "expected_output": "500",
+      "actual_problem": "Result varies due to race condition"
+    }
+  ],
+  "learning_objectives": [
+    "Understanding race conditions",
+    "Thread synchronization",
+    "Atomic operations and locks"
+  ]
+}

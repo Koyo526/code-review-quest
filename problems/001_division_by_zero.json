@@ -1,0 +1,33 @@
+{
+  "id": "001_division_by_zero",
+  "title": "Division by Zero Bug",
+  "difficulty": "beginner",
+  "category": "runtime_error",
+  "description": "Find the division by zero bug in this average calculation function",
+  "code": "def calculate_average(numbers):\n    total = 0\n    for i in range(len(numbers)):\n        total += numbers[i]\n    return total / len(numbers)  # Bug: Division by zero if empty list\n\n# Test the function\nresult = calculate_average([1, 2, 3, 4, 5])\nprint(f\"Average: {result}\")",
+  "bugs": [
+    {
+      "line_number": 5,
+      "type": "runtime_error",
+      "severity": "high",
+      "description": "Division by zero when empty list is passed",
+      "explanation": "The function doesn't check if the list is empty before dividing by len(numbers). This will cause a ZeroDivisionError.",
+      "fix_suggestion": "Add a check: if not numbers: return 0 or raise ValueError"
+    }
+  ],
+  "test_cases": [
+    {
+      "input": "[]",
+      "expected_error": "ZeroDivisionError"
+    },
+    {
+      "input": "[1, 2, 3]",
+      "expected_output": "2.0"
+    }
+  ],
+  "learning_objectives": [
+    "Understanding edge cases in mathematical operations",
+    "Importance of input validation",
+    "Handling empty collections"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "002_off_by_one",
+  "title": "Off-by-One Error",
+  "difficulty": "beginner",
+  "category": "logic_error",
+  "description": "Find the off-by-one error in this list processing function",
+  "code": "def get_last_n_items(items, n):\n    \"\"\"Get the last n items from a list\"\"\"\n    if n <= 0:\n        return []\n    \n    start_index = len(items) - n\n    return items[start_index:len(items) + 1]  # Bug: Off-by-one error\n\n# Test the function\nmy_list = [1, 2, 3, 4, 5]\nresult = get_last_n_items(my_list, 3)\nprint(f\"Last 3 items: {result}\")",
+  "bugs": [
+    {
+      "line_number": 7,
+      "type": "logic_error",
+      "severity": "medium",
+      "description": "Off-by-one error in slice end index",
+      "explanation": "The slice should end at len(items), not len(items) + 1. This will cause an IndexError or return more items than expected.",
+      "fix_suggestion": "Change to: return items[start_index:] or items[start_index:len(items)]"
+    }
+  ],
+  "test_cases": [
+    {
+      "input": "([1, 2, 3, 4, 5], 3)",
+      "expected_output": "[3, 4, 5]"
+    },
+    {
+      "input": "([1, 2], 5)",
+      "expected_output": "[1, 2]"
+    }
+  ],
+  "learning_objectives": [
+    "Understanding Python slicing",
+    "Common off-by-one errors",
+    "Array/list boundary conditions"
+  ]
+}

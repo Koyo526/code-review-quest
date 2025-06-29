@@ -1,0 +1,29 @@
+{
+  "id": "004_memory_leak",
+  "title": "Resource Leak",
+  "difficulty": "intermediate",
+  "category": "resource_management",
+  "description": "Find the resource leak in this file processing function",
+  "code": "def process_large_file(filename):\n    \"\"\"Process a large file line by line\"\"\"\n    try:\n        file = open(filename, 'r')  # Bug: File not properly closed\n        lines = []\n        \n        for line in file:\n            if line.strip():\n                lines.append(line.strip().upper())\n        \n        return lines\n    except FileNotFoundError:\n        print(f\"File {filename} not found\")\n        return []\n\n# Process multiple files\nfor i in range(100):\n    result = process_large_file(f\"data_{i}.txt\")",
+  "bugs": [
+    {
+      "line_number": 4,
+      "type": "resource_management",
+      "severity": "high",
+      "description": "File handle not properly closed",
+      "explanation": "The file is opened but never explicitly closed. This can lead to resource leaks, especially when processing many files.",
+      "fix_suggestion": "Use 'with open(filename, 'r') as file:' or explicitly call file.close() in a finally block"
+    }
+  ],
+  "test_cases": [
+    {
+      "input": "\"test.txt\"",
+      "expected_behavior": "File should be properly closed after processing"
+    }
+  ],
+  "learning_objectives": [
+    "Understanding resource management",
+    "Context managers and 'with' statement",
+    "Memory and file handle leaks"
+  ]
+}

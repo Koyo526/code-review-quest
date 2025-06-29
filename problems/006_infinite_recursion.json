@@ -1,0 +1,33 @@
+{
+  "id": "006_infinite_recursion",
+  "title": "Infinite Recursion",
+  "difficulty": "beginner",
+  "category": "logic_error",
+  "description": "Find the infinite recursion bug in this factorial function",
+  "code": "def factorial(n):\n    \"\"\"Calculate factorial of n\"\"\"\n    if n == 1:  # Bug: Missing base case for n = 0\n        return 1\n    else:\n        return n * factorial(n - 1)\n\n# Test cases\nprint(f\"5! = {factorial(5)}\")\nprint(f\"0! = {factorial(0)}\")  # This will cause infinite recursion",
+  "bugs": [
+    {
+      "line_number": 3,
+      "type": "logic_error",
+      "severity": "high",
+      "description": "Missing base case for n = 0",
+      "explanation": "The function only handles n = 1 as base case, but factorial(0) should return 1. This causes infinite recursion for n = 0.",
+      "fix_suggestion": "Change condition to: if n <= 1: return 1"
+    }
+  ],
+  "test_cases": [
+    {
+      "input": "5",
+      "expected_output": "120"
+    },
+    {
+      "input": "0",
+      "expected_error": "RecursionError (infinite recursion)"
+    }
+  ],
+  "learning_objectives": [
+    "Understanding recursion base cases",
+    "Preventing infinite recursion",
+    "Mathematical edge cases"
+  ]
+}
