@@ -1,115 +1,196 @@
-# Code Review Quest 🎮
+# 🎮 Code Review Quest
 
-バグ発見・設計レビューの思考プロセスをゲーム化し、若手エンジニアが楽しく学べるWebアプリケーション
+Interactive code review learning platform that gamifies the process of finding bugs and improving code quality skills.
 
-## 🎯 概要
+## 🌟 Features
 
-Code Review Questは、実際のコードレビュー業務で必要なスキルを、ゲーム形式で楽しく学習できるプラットフォームです。
+- **Interactive Code Review**: Find bugs in real code using Monaco Editor
+- **Gamified Learning**: Earn points, badges, and compete on leaderboards
+- **Multiple Difficulty Levels**: From beginner to advanced challenges
+- **Detailed Explanations**: Learn from mistakes with comprehensive feedback
+- **Progress Tracking**: Monitor your improvement over time
+- **Database Persistence**: All progress saved and tracked
 
-### 主な機能
-- 🔍 **バグ発見チャレンジ**: Pythonコードからバグを見つけるゲーム
-- 📊 **スキル分析**: 弱点カテゴリの可視化とスコア管理
-- 🏆 **バッジシステム**: 達成度に応じた報酬システム
-- 📈 **ダッシュボード**: 学習進捗の追跡
+## 🏗️ Architecture
 
-## 🏗️ アーキテクチャ
+### Local Development
+- **Frontend**: React + TypeScript + Vite + Monaco Editor
+- **Backend**: FastAPI + SQLAlchemy + PostgreSQL
+- **Cache**: Redis for session management
+- **Containerization**: Docker + Docker Compose
 
+### AWS Production (Cost-Optimized)
+- **Compute**: ECS Fargate with Spot instances (up to 70% cost savings)
+- **Database**: RDS Aurora Serverless v2 (pay-per-use scaling)
+- **Cache**: ElastiCache Serverless (usage-based pricing)
+- **Frontend**: S3 + CloudFront (global CDN)
+- **Load Balancer**: Application Load Balancer
+- **Infrastructure**: AWS CDK (Infrastructure as Code)
+
+## 🚀 Quick Start
+
+### Local Development
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/code-review-quest.git
+   cd code-review-quest
+   ```
+
+2. **Start the development environment**
+   ```bash
+   make dev
+   ```
+
+3. **Initialize the database**
+   ```bash
+   make init-db
+   ```
+
+4. **Access the application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+
+### AWS Deployment
+
+#### Prerequisites
+- AWS CLI configured with appropriate permissions
+- AWS CDK installed (`npm install -g aws-cdk`)
+- Docker installed for building images
+
+#### Deploy to Development Environment
+```bash
+# Deploy infrastructure
+make aws-deploy-dev
+
+# Build and push images (after ECR is created)
+make aws-build-backend
+make aws-build-frontend
+
+# Check deployment status
+make aws-status
 ```
-Frontend (React + TypeScript) ←→ Backend (FastAPI) ←→ Worker (Code Analysis)
-                                        ↓
-                                   Database (PostgreSQL)
+
+#### Deploy to Production
+```bash
+# Deploy to production (includes CI/CD pipeline)
+make aws-deploy-prod
 ```
 
-## 🚀 クイックスタート
+## 💰 Cost Optimization
 
-### 前提条件
-- Docker & Docker Compose
-- Node.js 18+
-- Python 3.11+
+### Estimated Monthly Costs
 
-### ローカル開発環境の起動
+| Environment | Estimated Cost | Key Features |
+|-------------|----------------|--------------|
+| Development | $40-70/month | Spot instances, auto-shutdown, minimal resources |
+| Staging | $55-100/month | Mixed instances, backup enabled |
+| Production | $95-220/month | High availability, full monitoring, backups |
+
+### Cost-Saving Features
+- **Fargate Spot Instances**: Up to 70% savings on compute
+- **Aurora Serverless v2**: Pay only for actual database usage
+- **ElastiCache Serverless**: Usage-based Redis pricing
+- **Auto-Shutdown**: Automatically stops dev/staging environments after hours
+- **Intelligent Tiering**: S3 storage optimization
+- **CloudFront**: Reduced bandwidth costs with global caching
+
+## 🛠️ Development Commands
 
 ```bash
-# 1. リポジトリをクローン
-git clone <repository-url>
-cd code-review-quest
+# Local Development
+make dev              # Start development environment
+make build            # Build all containers
+make logs             # View logs
+make test             # Run tests
+make clean            # Clean up containers
 
-# 2. 環境変数を設定
-cp .env.example .env
+# Database Management
+make init-db          # Initialize database with sample data
+make migrate          # Run database migrations
+make db-reset         # Reset database (WARNING: deletes all data)
 
-# 3. 全サービスを起動
-make dev
-
-# 4. ブラウザでアクセス
-open http://localhost:3000
+# AWS Deployment
+make aws-deploy-dev   # Deploy to AWS development
+make aws-deploy-prod  # Deploy to AWS production
+make aws-cost-estimate # Show cost estimates
+make aws-destroy-dev  # Destroy development environment
 ```
 
-## 📁 プロジェクト構造
+## 📊 Monitoring & Observability
 
-```
-code-review-quest/
-├── frontend/          # React SPA (TypeScript)
-├── backend/           # FastAPI サーバー
-├── worker/            # コード解析ワーカー
-├── problems/          # 問題データ
-├── infrastructure/    # AWS CDK (IaC)
-└── docs/             # 設計ドキュメント
-```
+### Local Development
+- **Health Checks**: `/health` endpoint for service status
+- **Logs**: Structured logging with different levels
+- **Database**: PostgreSQL with connection pooling
 
-## 🛠️ 開発コマンド
+### AWS Production
+- **CloudWatch**: Centralized logging and metrics
+- **ECS Health Checks**: Automatic container health monitoring
+- **RDS Monitoring**: Database performance insights
+- **Cost Alerts**: Budget notifications and alerts
+- **Auto-Scaling**: Automatic scaling based on CPU/memory usage
 
-```bash
-# 開発環境起動
-make dev
+## 🔒 Security
 
-# テスト実行
-make test
+- **Container Security**: Non-root user in containers
+- **Database**: Encrypted at rest and in transit
+- **Secrets Management**: AWS Secrets Manager for credentials
+- **Network Security**: VPC with private subnets
+- **HTTPS**: SSL/TLS encryption via CloudFront
 
-# リント実行
-make lint
+## 🎯 Game Mechanics
 
-# ビルド
-make build
+### Problem Categories
+- **Runtime Errors**: Division by zero, null pointer exceptions
+- **Logic Errors**: Off-by-one errors, incorrect algorithms
+- **Security Issues**: SQL injection, XSS vulnerabilities
+- **Resource Management**: Memory leaks, file handle issues
+- **Concurrency**: Race conditions, deadlocks
 
-# データベース初期化
-make seed-db
-```
+### Scoring System
+- **Base Points**: 100 points per problem
+- **Correct Bug**: +50 points per bug found
+- **False Positive**: -10 points per incorrect report
+- **Time Bonus**: Extra points for quick completion
+- **Accuracy Bonus**: Bonus for high accuracy rates
 
-## 🌐 デプロイ
+### Badge System
+- 🐛 **First Bug Hunter**: Find your first bug
+- 🎯 **Perfect Score**: Achieve 100% accuracy
+- 🏆 **Bug Master**: Find 50+ bugs total
+- 🔒 **Security Expert**: Complete 5 security challenges
+- ⚡ **Speed Demon**: Complete challenge in under 2 minutes
+- 📚 **Persistent Learner**: Complete 10 challenges
+- 🔥 **Advanced Challenger**: Complete 3 advanced challenges
 
-### AWS環境へのデプロイ
+## 🤝 Contributing
 
-```bash
-# CDKでインフラをデプロイ
-cd infrastructure
-cdk deploy --all
-```
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📖 ドキュメント
+## 📝 License
 
-- [アーキテクチャ設計](./docs/architecture.md)
-- [API仕様](./docs/api_spec.md)
-- [開発ガイド](./docs/development.md)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🤝 コントリビューション
+## 🙏 Acknowledgments
 
-1. Forkしてブランチを作成
-2. 変更を実装
-3. テストを追加・実行
-4. Pull Requestを作成
+- Monaco Editor for the code editing experience
+- FastAPI for the robust backend framework
+- React ecosystem for the frontend
+- AWS for the cloud infrastructure
+- All contributors and testers
 
-## 📄 ライセンス
+## 📞 Support
 
-MIT License - 詳細は [LICENSE](./LICENSE) を参照
-
-## 🎮 ゲームの遊び方
-
-1. **ログイン**: ゲストまたはSNSアカウントでログイン
-2. **難易度選択**: 初級・中級・上級から選択
-3. **チャレンジ開始**: 5-15分の制限時間でバグを発見
-4. **結果確認**: スコアと解説、獲得バッジを確認
-5. **成長追跡**: ダッシュボードで学習進捗を確認
+- **Issues**: [GitHub Issues](https://github.com/your-username/code-review-quest/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-username/code-review-quest/discussions)
+- **Email**: support@codereviewquest.com
 
 ---
 
-**Happy Coding & Happy Learning! 🚀**
+**Happy Bug Hunting! 🐛🎯**
