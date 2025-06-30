@@ -41,18 +41,23 @@ class SubmissionResponse(BaseModel):
 
 @router.post("/", response_model=SubmissionResponse)
 async def submit_solution(request: SubmissionRequest, db: Session = Depends(get_db)):
-    """Submit bug findings for evaluation with database persistence"""
+    """Submit bug findings for evaluation with support for anonymous, guest, and authenticated users"""
     
-    # Get session from database
+    # Try to get session from database (for authenticated users)
     session = GameSessionCRUD.get_session_by_id(db, request.session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
     
-    if session.status != "active":
-        raise HTTPException(status_code=400, detail="Session is not active")
+    # For anonymous/guest users, we need to get problem data directly
+    problem_id = request.problem_id
+    if session:
+        # Authenticated user session
+        if session.status != "active":
+            raise HTTPException(status_code=400, detail="Session is not active")
+        problem_id = problem_id or session.problem_id
+    elif not problem_id:
+        # Anonymous/guest session without problem_id
+        raise HTTPException(status_code=400, detail="Problem ID is required for anonymous sessions")
     
     # Get problem data from database first, fallback to problem service
-    problem_id = request.problem_id or session.problem_id
     db_problem = ProblemCRUD.get_problem_by_id(db, problem_id)
     
     if db_problem:
@@ -94,57 +99,63 @@ async def submit_solution(request: SubmissionRequest, db: Session = Depends(get_
         len(missed_bugs), len(false_positives), correct_points, penalty, score, base_score
     )
     
-    # Calculate time spent
-    time_spent = int(time.time() - session.started_at.timestamp()) if session.started_at else 0
+    # Calculate time spent (only for authenticated sessions)
+    time_spent = 0
+    if session and session.started_at:
+        time_spent = int(time.time() - session.started_at.timestamp())
     
-    # Save submission to database
-    submission_data = {
-        "session_id": session.id,
-        "user_id": session.user_id,
-        "bugs_reported": [{"line_number": bug.line_number, "description": bug.description} for bug in request.bugs],
-        "score": score,
-        "max_score": base_score,
-        "correct_bugs": correct_bugs_found,
-        "missed_bugs": missed_bugs,
-        "false_positives": false_positives,
-        "detailed_feedback": detailed_feedback
-    }
-    
-    submission = SubmissionCRUD.create_submission(db, submission_data)
-    
-    # Complete the session
-    session_results = {
-        "score": score,
-        "max_score": base_score,
-        "bugs_found": len(correct_bugs_found),
-        "bugs_missed": len(missed_bugs),
-        "false_positives": len(false_positives),
-        "time_spent": time_spent
-    }
-    
-    GameSessionCRUD.complete_session(db, request.session_id, session_results)
-    
-    # Update problem statistics
-    ProblemCRUD.update_problem_stats(db, problem_id, score)
-    
-    # Update user statistics and check for badges
-    badges_earned = []
-    if session.user_id:
-        # Update user stats
-        user_stats = SubmissionCRUD.get_submission_stats(db, session.user_id)
-        stats_update = {
-            "total_sessions": user_stats["total_submissions"],
-            "total_score": int(user_stats["average_score"] * user_stats["total_submissions"]),
-            "best_score": user_stats["best_score"],
-            "total_bugs_found": user_stats["total_bugs_found"],
-            "accuracy_rate": user_stats["accuracy_rate"],
-            "last_login": time.time()
+    # Save submission to database (only for authenticated users)
+    if session:
+        submission_data = {
+            "session_id": session.id,
+            "user_id": session.user_id,
+            "bugs_reported": [{"line_number": bug.line_number, "description": bug.description} for bug in request.bugs],
+            "score": score,
+            "max_score": base_score,
+            "correct_bugs": correct_bugs_found,
+            "missed_bugs": missed_bugs,
+            "false_positives": false_positives,
+            "detailed_feedback": detailed_feedback
         }
         
-        UserCRUD.update_user_stats(db, session.user_id, stats_update)
+        submission = SubmissionCRUD.create_submission(db, submission_data)
         
-        # Check for badge eligibility
-        badges_earned = _check_and_award_badges(db, session.user_id, score, base_score, problem)
+        # Complete the session
+        session_results = {
+            "score": score,
+            "max_score": base_score,
+            "bugs_found": len(correct_bugs_found),
+            "bugs_missed": len(missed_bugs),
+            "false_positives": len(false_positives),
+            "time_spent": time_spent
+        }
+        
+        GameSessionCRUD.complete_session(db, request.session_id, session_results)
+        
+        # Update problem statistics
+        ProblemCRUD.update_problem_stats(db, problem_id, score)
+        
+        # Update user statistics and check for badges
+        badges_earned = []
+        if session.user_id:
+            # Update user stats
+            user_stats = SubmissionCRUD.get_submission_stats(db, session.user_id)
+            stats_update = {
+                "total_sessions": user_stats["total_submissions"],
+                "total_score": int(user_stats["average_score"] * user_stats["total_submissions"]),
+                "best_score": user_stats["best_score"],
+                "total_bugs_found": user_stats["total_bugs_found"],
+                "accuracy_rate": user_stats["accuracy_rate"],
+                "last_login": time.time()
+            }
+            
+            UserCRUD.update_user_stats(db, session.user_id, stats_update)
+            
+            # Check for new badges
+            badges_earned = _check_and_award_badges(db, session.user_id, score, user_stats)
+    else:
+        # Anonymous/guest session - no database persistence
+        badges_earned = []
     
     return SubmissionResponse(
         session_id=request.session_id,

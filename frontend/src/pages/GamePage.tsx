@@ -60,24 +60,58 @@ const GamePage: React.FC = () => {
   }
 
   const handleSubmit = async () => {
+    console.log('🎯 Starting submission process...')
+    console.log('Bugs to submit:', bugs)
+    console.log('Session:', session)
+    
+    if (bugs.length === 0) {
+      const confirmSubmit = window.confirm('You haven\'t reported any bugs. Are you sure you want to submit?')
+      if (!confirmSubmit) return
+    }
+    
     try {
+      // Get auth token from localStorage if available
+      const token = localStorage.getItem('auth_token')
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+        console.log('🔑 Using auth token')
+      } else {
+        console.log('👤 Anonymous submission')
+      }
+
+      const submitData = {
+        session_id: session.session_id,
+        problem_id: session.problem_id,
+        bugs: bugs,
+      }
+      
+      console.log('📤 Submitting data:', submitData)
+
       const response = await fetch('/api/v1/submit/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          session_id: session.session_id,
-          bugs: bugs,
-        }),
+        headers,
+        body: JSON.stringify(submitData),
       })
 
+      console.log('📥 Response status:', response.status)
+      
       if (response.ok) {
         const result = await response.json()
+        console.log('✅ Submit successful:', result)
+        console.log('🔄 Navigating to results...')
         navigate('/result', { state: { result, session } })
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Submit error:', errorData)
+        alert(`Submission failed: ${errorData.detail || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Error submitting:', error)
+      console.error('💥 Network error:', error)
+      alert('Network error occurred. Please check the console and try again.')
     }
   }
 
