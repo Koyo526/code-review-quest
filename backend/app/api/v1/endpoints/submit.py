@@ -1,12 +1,14 @@
 """
-Code submission and evaluation endpoints
+Code submission and evaluation endpoints with database persistence
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
 import time
-import re
+from sqlalchemy.orm import Session
+from app.db.database import get_db
+from app.db.crud import GameSessionCRUD, SubmissionCRUD, ProblemCRUD, UserCRUD, BadgeCRUD
 from app.services.problem_service import problem_service
 
 router = APIRouter()
@@ -34,23 +36,37 @@ class SubmissionResponse(BaseModel):
     explanation: str
     detailed_feedback: List[dict]
     submitted_at: float
+    badges_earned: List[dict] = []
 
 
 @router.post("/", response_model=SubmissionResponse)
-async def submit_solution(request: SubmissionRequest):
-    """Submit bug findings for evaluation"""
+async def submit_solution(request: SubmissionRequest, db: Session = Depends(get_db)):
+    """Submit bug findings for evaluation with database persistence"""
     
-    # Extract problem_id from session_id if not provided
-    problem_id = request.problem_id
-    if not problem_id:
-        # Try to extract from session (this is a simplified approach)
-        # In a real app, you'd store session data in a database
-        problem_id = "001_division_by_zero"  # Default fallback
+    # Get session from database
+    session = GameSessionCRUD.get_session_by_id(db, request.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
     
-    # Get the problem data
-    problem = problem_service.get_problem_by_id(problem_id)
-    if not problem:
-        raise HTTPException(status_code=404, detail="Problem not found")
+    if session.status != "active":
+        raise HTTPException(status_code=400, detail="Session is not active")
+    
+    # Get problem data from database first, fallback to problem service
+    problem_id = request.problem_id or session.problem_id
+    db_problem = ProblemCRUD.get_problem_by_id(db, problem_id)
+    
+    if db_problem:
+        problem = {
+            'id': db_problem.id,
+            'title': db_problem.title,
+            'category': db_problem.category,
+            'bugs': db_problem.bugs
+        }
+    else:
+        # Fallback to problem service
+        problem = problem_service.get_problem_by_id(problem_id)
+        if not problem:
+            raise HTTPException(status_code=404, detail="Problem not found")
     
     # Extract correct bug line numbers from problem data
     correct_bugs = [bug['line_number'] for bug in problem['bugs']]
@@ -78,6 +94,58 @@ async def submit_solution(request: SubmissionRequest):
         len(missed_bugs), len(false_positives), correct_points, penalty, score, base_score
     )
     
+    # Calculate time spent
+    time_spent = int(time.time() - session.started_at.timestamp()) if session.started_at else 0
+    
+    # Save submission to database
+    submission_data = {
+        "session_id": session.id,
+        "user_id": session.user_id,
+        "bugs_reported": [{"line_number": bug.line_number, "description": bug.description} for bug in request.bugs],
+        "score": score,
+        "max_score": base_score,
+        "correct_bugs": correct_bugs_found,
+        "missed_bugs": missed_bugs,
+        "false_positives": false_positives,
+        "detailed_feedback": detailed_feedback
+    }
+    
+    submission = SubmissionCRUD.create_submission(db, submission_data)
+    
+    # Complete the session
+    session_results = {
+        "score": score,
+        "max_score": base_score,
+        "bugs_found": len(correct_bugs_found),
+        "bugs_missed": len(missed_bugs),
+        "false_positives": len(false_positives),
+        "time_spent": time_spent
+    }
+    
+    GameSessionCRUD.complete_session(db, request.session_id, session_results)
+    
+    # Update problem statistics
+    ProblemCRUD.update_problem_stats(db, problem_id, score)
+    
+    # Update user statistics and check for badges
+    badges_earned = []
+    if session.user_id:
+        # Update user stats
+        user_stats = SubmissionCRUD.get_submission_stats(db, session.user_id)
+        stats_update = {
+            "total_sessions": user_stats["total_submissions"],
+            "total_score": int(user_stats["average_score"] * user_stats["total_submissions"]),
+            "best_score": user_stats["best_score"],
+            "total_bugs_found": user_stats["total_bugs_found"],
+            "accuracy_rate": user_stats["accuracy_rate"],
+            "last_login": time.time()
+        }
+        
+        UserCRUD.update_user_stats(db, session.user_id, stats_update)
+        
+        # Check for badge eligibility
+        badges_earned = _check_and_award_badges(db, session.user_id, score, base_score, problem)
+    
     return SubmissionResponse(
         session_id=request.session_id,
         problem_id=problem_id,
@@ -88,7 +156,8 @@ async def submit_solution(request: SubmissionRequest):
         false_positives=false_positives,
         explanation=explanation,
         detailed_feedback=detailed_feedback,
-        submitted_at=time.time()
+        submitted_at=time.time(),
+        badges_earned=badges_earned
     )
 
 
@@ -144,7 +213,6 @@ def _generate_explanation(problem, correct_count, total_bugs, missed_count, fals
     explanation_parts = [
         f"🎯 **{problem['title']} - Analysis Results**",
         f"**Problem Category:** {problem['category'].replace('_', ' ').title()}",
-        f"**Difficulty:** {problem['difficulty'].title()}",
         "",
         f"**Bugs Found:** {correct_count}/{total_bugs}",
     ]
@@ -192,3 +260,29 @@ def _generate_explanation(problem, correct_count, total_bugs, missed_count, fals
     ])
     
     return "\n".join(explanation_parts)
+
+
+def _check_and_award_badges(db: Session, user_id: str, score: int, max_score: int, problem: dict) -> List[dict]:
+    """Check badge eligibility and award new badges"""
+    badges_earned = []
+    all_badges = BadgeCRUD.get_all_badges(db)
+    
+    for badge in all_badges:
+        # Check if user already has this badge
+        existing_badges = BadgeCRUD.get_user_badges(db, user_id)
+        if any(ub.badge_id == badge.id for ub in existing_badges):
+            continue
+        
+        # Check eligibility
+        if BadgeCRUD.check_badge_eligibility(db, user_id, badge.requirements):
+            # Award the badge
+            user_badge = BadgeCRUD.award_badge(db, user_id, badge.id)
+            badges_earned.append({
+                "id": badge.id,
+                "name": badge.name,
+                "description": badge.description,
+                "icon": badge.icon,
+                "earned_at": user_badge.earned_at.timestamp()
+            })
+    
+    return badges_earned

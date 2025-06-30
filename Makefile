@@ -1,4 +1,4 @@
-.PHONY: help dev build test lint clean seed-db logs stop
+.PHONY: help dev build test lint clean seed-db logs stop aws-deploy-dev aws-deploy-staging aws-deploy-prod aws-build-backend aws-build-frontend aws-cost-estimate
 
 # Default target
 help: ## Show this help message
@@ -8,6 +8,115 @@ help: ## Show this help message
 
 # Development
 dev: ## Start development environment
+	@echo "🚀 Starting development environment..."
+	docker-compose up -d
+
+build: ## Build all containers
+	@echo "🐳 Building containers..."
+	docker-compose build
+
+test: ## Run tests
+	@echo "🧪 Running tests..."
+	docker-compose exec backend python -m pytest
+
+lint: ## Run linting
+	@echo "🔍 Running linting..."
+	docker-compose exec backend python -m pylint app/
+
+clean: ## Clean up containers and volumes
+	@echo "🧹 Cleaning up..."
+	docker-compose down -v
+	docker system prune -f
+
+logs: ## Show logs
+	@echo "📋 Showing logs..."
+	docker-compose logs -f
+
+stop: ## Stop all services
+	@echo "🛑 Stopping services..."
+	docker-compose down
+
+# Database
+init-db: ## Initialize database with sample data
+	@echo "🗄️ Initializing database..."
+	python scripts/init_database.py
+
+migrate: ## Run database migrations
+	@echo "🔄 Running database migrations..."
+	docker-compose exec backend alembic upgrade head
+
+migrate-create: ## Create a new migration
+	@echo "📝 Creating new migration..."
+	@read -p "Enter migration message: " msg; \
+	docker-compose exec backend alembic revision --autogenerate -m "$$msg"
+
+db-reset: ## Reset database (WARNING: This will delete all data)
+	@echo "⚠️  WARNING: This will delete all database data!"
+	@read -p "Are you sure? (y/N): " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		docker-compose exec backend alembic downgrade base; \
+		docker-compose exec backend alembic upgrade head; \
+		python scripts/init_database.py; \
+		echo "✅ Database reset completed"; \
+	else \
+		echo "❌ Database reset cancelled"; \
+	fi
+
+seed-db: ## Initialize database with sample data
+	@echo "🌱 Seeding database with sample data..."
+	python scripts/init_database.py
+
+# AWS Deployment
+aws-deploy-dev: ## Deploy to AWS development environment
+	@echo "🚀 Deploying to AWS development environment..."
+	./scripts/deploy.sh dev
+
+aws-deploy-staging: ## Deploy to AWS staging environment
+	@echo "🚀 Deploying to AWS staging environment..."
+	./scripts/deploy.sh staging
+
+aws-deploy-prod: ## Deploy to AWS production environment
+	@echo "🚀 Deploying to AWS production environment..."
+	./scripts/deploy.sh prod
+
+aws-build-backend: ## Build backend Docker image for AWS
+	@echo "🐳 Building backend Docker image for AWS..."
+	cd backend && docker build -f Dockerfile.aws -t code-review-quest-backend:latest .
+
+aws-build-frontend: ## Build frontend for AWS deployment
+	@echo "🏗️ Building frontend for AWS deployment..."
+	cd frontend && npm run build
+
+aws-push-images: ## Push Docker images to ECR
+	@echo "📤 Pushing Docker images to ECR..."
+	@echo "Please run the ECR login command first:"
+	@echo "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com"
+
+aws-logs: ## View ECS logs
+	@echo "📋 Viewing ECS logs..."
+	aws logs tail /ecs/code-review-quest-dev --follow
+
+aws-status: ## Check AWS deployment status
+	@echo "📊 Checking AWS deployment status..."
+	aws cloudformation describe-stacks --stack-name CodeReviewQuest-dev --query 'Stacks[0].StackStatus'
+
+aws-destroy-dev: ## Destroy AWS development environment
+	@echo "⚠️ Destroying AWS development environment..."
+	@read -p "Are you sure? This will delete all resources! (y/N): " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		cd infrastructure && cdk destroy CodeReviewQuest-dev --force; \
+	else \
+		echo "❌ Destruction cancelled"; \
+	fi
+
+aws-cost-estimate: ## Show estimated AWS costs
+	@echo "💰 AWS Cost Estimation:"
+	@echo "======================="
+	@echo "Development: ~$40-70/month"
+	@echo "Staging: ~$55-100/month"
+	@echo "Production: ~$95-220/month"
+	@echo ""
+	@echo "💡 Cost breakdown available in deployment script"
 	@echo "🚀 Starting Code Review Quest development environment..."
 	docker-compose up -d db redis
 	@echo "⏳ Waiting for database to be ready..."
@@ -18,9 +127,35 @@ dev-detached: ## Start development environment in background
 	docker-compose up -d --build
 
 # Database
+# Database
+init-db: ## Initialize database with sample data
+	@echo "🗄️ Initializing database..."
+	python scripts/init_database.py
+
+migrate: ## Run database migrations
+	@echo "🔄 Running database migrations..."
+	docker-compose exec backend alembic upgrade head
+
+migrate-create: ## Create a new migration
+	@echo "📝 Creating new migration..."
+	@read -p "Enter migration message: " msg; \
+	docker-compose exec backend alembic revision --autogenerate -m "$$msg"
+
+db-reset: ## Reset database (WARNING: This will delete all data)
+	@echo "⚠️  WARNING: This will delete all database data!"
+	@read -p "Are you sure? (y/N): " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		docker-compose exec backend alembic downgrade base; \
+		docker-compose exec backend alembic upgrade head; \
+		python scripts/init_database.py; \
+		echo "✅ Database reset completed"; \
+	else \
+		echo "❌ Database reset cancelled"; \
+	fi
+
 seed-db: ## Initialize database with sample data
 	@echo "🌱 Seeding database with sample data..."
-	docker-compose exec backend python scripts/seed_db.py
+	python scripts/init_database.py
 
 migrate: ## Run database migrations
 	docker-compose exec backend alembic upgrade head

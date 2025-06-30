@@ -21,7 +21,7 @@
       "expected_output": "User data for john_doe"
     },
     {
-      "input": \"' OR '1'='1' --\",
+      "input": "\"' OR '1'='1' --\"",
       "expected_vulnerability": "Returns all users due to SQL injection"
     }
   ],
